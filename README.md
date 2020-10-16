@@ -1,5 +1,7 @@
 # MongocUtils.jl
 ```julia
+using Mongoc,MongocUtils
+
 struct Tvalue
    id::String
 end
