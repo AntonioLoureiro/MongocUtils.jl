@@ -39,11 +39,11 @@ function naiveBSON(s)
     document=Mongoc.BSON()
     fs=fieldnames(typeof(s))
     for f in fs
-        ts=typeof(getfield(s,f))
-        if ts isa BSON_PRIMITIVE
-            document[string(f)]=getfield(s,f)
+        v=getfield(s,f)
+        if v isa BSON_PRIMITIVE
+            document[string(f)]=v
         else
-            document[string(f)]=naiveBSON(getfield(s,f))
+            document[string(f)]=naiveBSON(v)
         end
     end
     
