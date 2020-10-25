@@ -13,10 +13,10 @@ Base.setindex!(d::Mongoc.BSON,tv::Date,st::String)=d[st]=DateTime(tv)
 macro BSON(datatype,arr_f)
     arr_f=@eval($arr_f)
     constr_ex_arr=[]
-    for f in arr_f
-        push!(constr_ex_arr,"\""*string(f)*"\"=>getfield(s,:$f)")
+    for f in arr_f    
+        push!(constr_ex_arr,"\""*string(f)*"\"=>getfield(s,:$f)")   
     end
-    ex=Meta.parse("Mongoc.BSON("*join(constr_ex_arr,",")*")")
+    ex=Meta.parse("try Mongoc.BSON("*join(constr_ex_arr,",")*") catch; BSON_fallback(s) end")
 
     return quote
         function Mongoc.BSON(s::$(esc(datatype)))    
@@ -28,12 +28,13 @@ end
 macro BSON_setindex(datatype)
     
     return quote
-        function Base.setindex!(d::Mongoc.BSON,tv::$(esc(datatype)),st::String)
+        function Base.setindex!(d::Mongoc.BSON,tv::$(esc(datatype)),st::AbstractString)
             d[st]=Mongoc.BSON(tv)
             return nothing
         end
     end 
 end
+
 
 function naiveBSON(s)
     document=Mongoc.BSON()
@@ -50,9 +51,12 @@ function naiveBSON(s)
     return document
 end
 
-function Mongoc.BSON(s)
+Mongoc.BSON(s)=BSON_fallback(s)
+
+function BSON_fallback(s)
     curr_mod=Main
-    fs=fieldnames(typeof(s))
+    ts=typeof(s)
+    fs=fieldnames(ts)
     for f in fs
         tnf=typeof(getfield(s,f))
         fnf=fieldnames(tnf)
@@ -61,7 +65,7 @@ function Mongoc.BSON(s)
             Core.eval(curr_mod,Meta.parse("@BSON_setindex($tnf)"))
         end
     end
-    ts=typeof(s)
+    
     Core.eval(curr_mod,Meta.parse("@BSON($ts,$fs)"))
     Core.eval(curr_mod,Meta.parse("@BSON_setindex($ts)"))
     return naiveBSON(s)
