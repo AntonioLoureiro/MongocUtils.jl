@@ -1,7 +1,7 @@
 name = "MongocUtils"
 uuid = "e584fc4d-3f36-46f9-b493-fafa6061fac8"
 authors = ["Antonio Loureiro <ajose.loureiro@gmail.com>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 Mongoc = "4fe8b98c-fc19-5c23-8ec2-168ff83495f2"
