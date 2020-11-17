@@ -6,7 +6,7 @@ import Mongoc.BSON
 
 export @BSON,@BSON_setindex
 
-const BSON_PRIMITIVE=Union{Mongoc.BSONObjectId,Number,AbstractString,DateTime,Mongoc.BSON,Dict,Vector,Mongoc.BSONCode,Date,Vector{UInt8},Nothing}
+const BSON_PRIMITIVE=Union{Mongoc.BSONObjectId,Number,AbstractString,DateTime,Mongoc.BSON,Dict,Vector,Mongoc.BSONCode,Date,Vector{UInt8},Nothing,Enum}
 
 ## Date
 Base.setindex!(d::Mongoc.BSON,tv::Date,st::String)=d[st]=DateTime(tv)
