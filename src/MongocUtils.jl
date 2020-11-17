@@ -8,7 +8,12 @@ export @BSON,@BSON_setindex
 
 const BSON_PRIMITIVE=Union{Mongoc.BSONObjectId,Number,AbstractString,DateTime,Mongoc.BSON,Dict,Vector,Mongoc.BSONCode,Date,Vector{UInt8},Nothing}
 
+## Date
 Base.setindex!(d::Mongoc.BSON,tv::Date,st::String)=d[st]=DateTime(tv)
+
+## Enum
+Base.setindex!(d::Mongoc.BSON,tv::Enum,st::String)=d[st]=Int(tv)
+Mongoc.BSON(s::Enum)=Int(tv)
 
 macro BSON(datatype,arr_f)
     arr_f=@eval($arr_f)
