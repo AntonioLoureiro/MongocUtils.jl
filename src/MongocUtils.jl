@@ -13,7 +13,7 @@ Base.setindex!(d::Mongoc.BSON,tv::Date,st::String)=d[st]=DateTime(tv)
 
 ## Enum
 Base.setindex!(d::Mongoc.BSON,tv::Enum,st::String)=d[st]=Int(tv)
-Mongoc.BSON(s::Enum)=Int(tv)
+Mongoc.BSON(s::Enum)=Int(s)
 
 macro BSON(datatype,arr_f)
     arr_f=@eval($arr_f)
