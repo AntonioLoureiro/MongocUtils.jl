@@ -14,6 +14,8 @@ jobs:
           version: 1.5        
       - name: Install dependencies
         run: julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+      - name: Install Mongoc
+        run: julia -e 'import Pkg; Pkg.add("Mongoc")'
       - name: Run Tests
         run: julia -e 'push!(LOAD_PATH,"/home/runner/work/MongocUtils.jl/VueJS.jl");using MongocUtils;include("/home/runner/work/MongocUtils.jl/MongocUtils.jl/test/runtests.jl")'
         
