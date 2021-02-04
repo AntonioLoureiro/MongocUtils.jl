@@ -5,7 +5,7 @@ struct Tvalue
    id::String
 end
 
-struct Test
+struct TestM
     id::String
     i::Int64
     a::Array{Dict,1}
@@ -13,7 +13,7 @@ struct Test
     t::Tvalue
 end
 
-t1=Test("aa", 1, [Dict("aa"=>1),Dict("c"=>"tt")],[Tvalue("tt")], Tvalue("tt"))
+t1=TestM("aa", 1, [Dict("aa"=>1),Dict("c"=>"tt")],[Tvalue("tt")], Tvalue("tt"))
 bt=Mongoc.BSON(t1)
 
 @test bt["id"]=="aa"
