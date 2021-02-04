@@ -13,8 +13,8 @@ jobs:
         with:
           version: 1.5        
       - name: Install dependencies
-        run: julia -e 'using Pkg; Pkg.add(PackageSpec(name="MongocUtils",rev="main")); Pkg.instantiate()'
+        run:  julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
       - name: Run Tests
-        run: julia -e 'include("/home/runner/work/MongocUtils.jl/MongocUtils.jl/test/runtests.jl")'
+        run: julia -e 'push!(LOAD_PATH,"/home/runner/work/MongocUtils.jl/MongocUtils.jl");include("/home/runner/work/MongocUtils.jl/MongocUtils.jl/test/runtests.jl")'
         
     
