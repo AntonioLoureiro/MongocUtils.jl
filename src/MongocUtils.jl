@@ -49,7 +49,7 @@ function naiveBSON(s)
         if v isa BSON_PRIMITIVE
             document[string(f)]=v
         elseif v isa Vector
-            document[string(f)]=map(x->naiveBSON(x),v)
+            document[string(f)]=[r isa BSON_PRIMITIVE ? r : naiveBSON(r) for r in v]
         else
             document[string(f)]=naiveBSON(v)
         end
