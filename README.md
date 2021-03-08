@@ -1,4 +1,5 @@
 # MongocUtils.jl
+## Write to Mongo
 ```julia
 using Mongoc,MongocUtils
 
@@ -15,11 +16,16 @@ struct Test
 end
 
 t1=Test("aa", 1, [Dict("aa"=>1),Dict("c"=>"tt")],[Tvalue("tt")], Tvalue("tt"))
-Mongoc.BSON(t1)
+bs=Mongoc.BSON(t1)
 Mongoc.BSON with 5 entries:
   "id" => "aa"
   "i"  => 1
   "a"  => Any[Dict{Any,Any}("aa"=>1), Dict{Any,Any}("c"=>"tt")]
   "vt" => Any[Dict{Any,Any}("id"=>"tt")]
   "t"  => Dict{Any,Any}("id"=>"tt")
+  ```
+## Read from Mongo
+```julia
+as_struct(bs)
+Test("aa", 1, Dict[Dict{Any,Any}("aa" => 1), Dict{Any,Any}("c" => "tt")], Tvalue[Tvalue("tt")], Tvalue("tt"))
   ```
