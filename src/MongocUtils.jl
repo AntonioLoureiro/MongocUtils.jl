@@ -1,6 +1,6 @@
 module MongocUtils
 
-using Mongoc,Dates
+using Mongoc,Dates,InteractiveUtils
 import Base.setindex!
 import Mongoc.BSON
 

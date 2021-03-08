@@ -46,7 +46,7 @@ function get_concrete_types(dt::Type)
     if typeof(dt)==Union
          iter_data_types!(ret,Base.uniontypes(dt))
     else
-        iter_data_types!(ret,Main.subtypes(dt))
+        iter_data_types!(ret,InteractiveUtils.subtypes(dt))
     end
     return ret
 end
