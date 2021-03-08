@@ -26,6 +26,6 @@ Mongoc.BSON with 5 entries:
   ```
 ## Read from Mongo
 ```julia
-as_struct(bs)
-Test("aa", 1, Dict[Dict{Any,Any}("aa" => 1), Dict{Any,Any}("c" => "tt")], Tvalue[Tvalue("tt")], Tvalue("tt"))
+as_struct(Test,bs)
+Test("aa", 1, Dict[Dict("aa" => 1), Dict("c" => "tt")], Tvalue[Tvalue("tt")], Tvalue("tt"))
   ```
