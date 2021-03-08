@@ -20,7 +20,7 @@ bt=Mongoc.BSON(t1)
 @test bt["i"]==1
 @test bt["a"]==[Dict("aa" => 1), Dict("c" => "tt")]
 @test bt["vt"][1]["id"]=="tt"
-@test bt["t"]==Dict("id"=>"tt")
+@test bt["t"]["id"]=="tt"
 
 module md
 
