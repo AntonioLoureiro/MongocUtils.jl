@@ -57,7 +57,7 @@ end
 
 end
 
-inst=md.st("T",123,123.123,red,[md.nest_st("T",100.10,200,[],"Any"),Dict("a"=>100,"b"=>"test")],md.nest_st("T",100.10,200,[23,"aa"],"Any"),Dict("a"=>100))
+inst=md.st("T",123,123.123,md.red,[md.nest_st("T",100.10,200,[],"Any"),Dict("a"=>100,"b"=>"test")],md.nest_st("T",100.10,200,[23,"aa"],"Any"),Dict("a"=>100))
 bson=Mongoc.BSON(inst)
 inst_st=as_struct(md.st,bson)
 @test inst_st.s=="T"
@@ -66,7 +66,7 @@ inst_st=as_struct(md.st,bson)
 @test inst_st.v[2]==Dict("a"=>100,"b"=>"test")
 @test inst_st.ns.s=="T"
 @test inst_st.z==Dict("a"=>100)
-@test inst_st.e==red
+@test inst_st.e==md.red
 
 ## Construction with Abstract Type
 @time inst_st=as_struct(md.abs,bson)
