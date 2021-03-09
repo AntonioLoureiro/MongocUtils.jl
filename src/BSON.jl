@@ -5,7 +5,7 @@ macro BSON(datatype,arr_f)
         push!(constr_ex_arr,"\""*string(f)*"\"=>getfield(s,:$f)")   
     end
     ## _type
-    push!(constr_ex_arr,"\"_type\"=>$datatype")
+    push!(constr_ex_arr,"\"_type\"=>\"$datatype\"")
     
     ex=Meta.parse("try Mongoc.BSON("*join(constr_ex_arr,",")*") catch; BSON_fallback(s) end")
 
