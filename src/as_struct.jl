@@ -27,6 +27,8 @@ end
 convert_bson_value(dt::DataType,x::BSON_VALUE_PRIMITIVE)=x
 convert_bson_value(dt::Union,x::BSON_VALUE_PRIMITIVE)=x
 convert_bson_value(dt::UnionAll,x::BSON_VALUE_PRIMITIVE)=x
+convert_bson_value(dt::Type{T} where T<:Enum,x::BSON_VALUE_PRIMITIVE)=dt(x)
+
 convert_bson_value(dt::Type{Array{T,1} where T}, arr::Array)=map(x->convert_bson_value(eltype(dt),x),arr)
 convert_bson_value(dt::Type{T} where T<:AbstractDict,x)=x
 
