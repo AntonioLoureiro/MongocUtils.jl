@@ -30,7 +30,40 @@ convert_bson_value(dt::UnionAll,x::BSON_VALUE_PRIMITIVE)=x
 convert_bson_value(dt::Type{T} where T<:Enum,x::BSON_VALUE_PRIMITIVE)=dt(x)
 
 convert_bson_value(dt::Type{Array{T,1} where T}, arr::Array)=map(x->convert_bson_value(eltype(dt),x),arr)
-convert_bson_value(dt::Type{T} where T<:AbstractDict,x)=x
+
+function convert_bson_value(dt::Type{T} where T<:AbstractDict,x)
+       
+    _type=get(x,"_type",nothing)
+    _value=get(x,"_value",nothing)
+
+    if _type==nothing
+       ret=Dict{String,Any}()
+        for (k,v) in x
+           ret[k]=convert_bson_value(Any,v) 
+        end
+       return ret
+    else
+        ret=str_to_type(_type)()
+        for r in _value
+            k=r["_k"]
+            v=r["_v"]
+            if k isa AbstractDict && get(k,"_type",nothing)!=nothing
+               kc=convert_bson_value(str_to_type(k["_type"]),k)
+            else
+                kc=k
+            end
+            
+            if v isa AbstractDict && get(v,"_type",nothing)!=nothing
+               vc=convert_bson_value(str_to_type(v["_type"]),v)
+            else
+                vc=v
+            end
+            ret[kc]=vc            
+        end
+        
+        return ret
+    end
+end
 
 function iter_data_types!(ret::Vector{DataType},arr::Vector)
     for r in arr
@@ -53,22 +86,38 @@ function get_concrete_types(dt::Type)
     return ret
 end
 
-function str_to_type(str::String)
+function str_to_type(str::AbstractString)
     curr_model=Main
-    str_arr=split(str,".")
-    if length(str_arr)==1    
-        return getfield(curr_model,Symbol(str))
-    else
-        for r in str_arr[1:end-1]
-            curr_model=getfield(curr_model,Symbol(r))
+    ex=Meta.parse(str)
+    
+    if ex isa Symbol
+        return getfield(curr_model,ex)
+    elseif ex isa Expr
+        if ex.head==:.
+            namespace_arr=split(string(ex.args[1]),".")
+            for n in namespace_arr
+                curr_model=getfield(curr_model,Symbol(n))
+            end
+            return getfield(curr_model,ex.args[2].value)
+        # Parametric
+        elseif ex.head==:curly
+            dt=str_to_type(string(ex.args[1]))
+            parameters=Vector{Type}()
+            for e in ex.args[2:end]
+               push!(parameters,str_to_type(string(e)))
+            end
+            return dt{parameters...}
         end
-        return getfield(curr_model,Symbol(str_arr[end]))
     end
 end
 
 function convert_bson_value(dt::Type,x)
     
-    if dt<:MongocUtils.BSON_PRIMITIVE
+    if dt<:Type
+        return str_to_type(get(x,"_value",nothing))
+    elseif dt<:AbstractDict
+        return convert_bson_value(dt,x)
+    elseif dt<:MongocUtils.BSON_PRIMITIVE
         return x 
     elseif isconcretetype(dt)
         return as_struct(dt,x)
@@ -92,6 +141,8 @@ function convert_bson_value(dt::Type,x)
             catch;
                return x
             end
+        elseif _type=="Type"
+            return str_to_type(get(x,"_value",nothing))
         else
             return convert_bson_value(str_to_type(_type),x)
         end

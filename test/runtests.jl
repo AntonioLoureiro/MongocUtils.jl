@@ -71,3 +71,27 @@ inst_st=as_struct(md.st,bson)
 ## Construction with Abstract Type
 @time inst_st=as_struct(md.abs,bson)
 @test inst_st.ns.s=="T"
+
+## Complex, Dict with non string keys and datatypes
+mutable struct complexStruct{T}  
+    a::T
+    b::String
+    d::Dict
+    v::Vector{Int64}
+    t::Type
+    ta
+end
+
+p1=complexStruct{Int64}(1,"t",Dict("1"=>md.nest_st("T",100.10,200,[],"Any")),[1,2,3],Float64,Number)
+
+bs=Mongoc.BSON(p1)
+inst_st=as_struct(complexStruct{Int64},bs)
+@test inst_st.t==Float64
+@test inst_st.d["1"] isa md.nest_st
+
+
+p1=complexStruct{Int64}(1,"t",Dict(1=>md.nest_st("T",100.10,200,[],"Any")),[1,2,3],md.st,md.st)
+bs=Mongoc.BSON(p1)
+inst_st=as_struct(complexStruct{Int64},bs)
+@test inst_st.t==md.st
+@test inst_st.d[1] isa md.nest_st

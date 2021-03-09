@@ -1,3 +1,27 @@
+const BSON_PRIMITIVE=Union{Mongoc.BSONObjectId,Number,AbstractString,DateTime,Mongoc.BSON,Type,Dict,Mongoc.BSONCode,Date,Vector{UInt8},Nothing,Enum}
+
+## Type
+function Base.setindex!(d::Mongoc.BSON,tv::Type,st::AbstractString)
+    d[st]=Dict("_type"=>"Type","_value"=>string(tv))
+end
+
+## Date
+Base.setindex!(d::Mongoc.BSON,tv::Date,st::String)=d[st]=DateTime(tv)
+
+## Enum
+Base.setindex!(d::Mongoc.BSON,tv::Enum,st::String)=d[st]=Int(tv)
+Mongoc.BSON(s::BSON_PRIMITIVE)=s
+Mongoc.BSON(s::Enum)=Int(s)
+
+function Base.setindex!(d::Mongoc.BSON,tv::Dict,st::String)
+    if keytype(tv)<:AbstractString    
+        setindex!(d, BSON(tv), st)
+    else
+        return d[st]=Dict("_type"=>string(typeof(tv)),"_value"=>[Dict("_k"=>Mongoc.BSON(k),"_v"=>Mongoc.BSON(v)) for (k,v) in tv])
+    end
+end
+
+
 macro BSON(datatype,arr_f)
     arr_f=@eval($arr_f)
     constr_ex_arr=[]
