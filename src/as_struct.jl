@@ -19,7 +19,9 @@ function as_struct(dt::Type, x::Mongoc.BSON)
                return x
             end
         else
-            return as_struct(str_to_type(_type),x)
+            stored_type=str_to_type(_type)
+            @assert stored_type<:dt "Stored $(string(stored_type)) is not a subtype of abstract type $(string(dt))"
+            return as_struct(stored_type,x)
         end
     end
 end
