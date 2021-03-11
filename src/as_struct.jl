@@ -8,7 +8,7 @@ function as_struct(dt::Type, x::Mongoc.BSON)
        return dt([convert_bson_value(fieldtype(dt,k),x[string(k)]) for k in fieldnames(dt)]...)
     else
          _type=nothing
-        try _type=get(x,"_type",nothing) catch; end
+        haskey(x,"_type") ? _type=x["_type"] : nothing
         if _type==nothing
             types_arr=get_concrete_types(dt)
             try 
@@ -47,13 +47,13 @@ function convert_bson_value(dt::Type{T} where T<:AbstractDict,x)
         for r in _value
             k=r["_k"]
             v=r["_v"]
-            if k isa AbstractDict && get(k,"_type",nothing)!=nothing
+            if k isa AbstractDict && haskey(k,"_type")
                kc=convert_bson_value(str_to_type(k["_type"]),k)
             else
                 kc=k
             end
             
-            if v isa AbstractDict && get(v,"_type",nothing)!=nothing
+            if v isa AbstractDict && haskey(v,"_type")
                vc=convert_bson_value(str_to_type(v["_type"]),v)
             else
                 vc=v
@@ -123,7 +123,7 @@ function convert_bson_value(dt::Type,x)
         return as_struct(dt,x)
     elseif dt==Any
         _type=nothing
-        try _type=get(x,"_type",nothing) catch; end
+        haskey(x,"_type") ? _type=x["_type"] : nothing
         if _type==nothing
             return x
         else
@@ -131,7 +131,7 @@ function convert_bson_value(dt::Type,x)
         end
     else
         _type=nothing
-        try _type=get(x,"_type",nothing) catch; end
+        haskey(x,"_type") ? _type=x["_type"] : nothing
         if _type==nothing
             types_arr=get_concrete_types(dt)
             try 
