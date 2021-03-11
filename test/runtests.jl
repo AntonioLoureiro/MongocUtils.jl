@@ -55,6 +55,14 @@ struct st<:abs
     z
 end
 
+struct std<:abs
+    d1::Dict
+    d2::Dict
+    d3::Dict{String,Int64}
+    d4::Dict{Int64,Int64}
+    d5::Dict{Int64,nest_st}
+end
+
 end
 
 inst=md.st("T",123,123.123,md.red,[md.nest_st("T",100.10,200,[],"Any"),Dict("a"=>100,"b"=>"test")],md.nest_st("T",100.10,200,[23,"aa"],"Any"),Dict("a"=>100))
@@ -71,6 +79,22 @@ inst_st=as_struct(md.st,bson)
 ## Construction with Abstract Type
 @time inst_st=as_struct(md.abs,bson)
 @test inst_st.ns.s=="T"
+
+## Dicts
+inst=md.std(Dict("ff"=>"ff"),Dict(1=>md.nest_st("T",100.10,200,[],"Any")),Dict("a"=>1),Dict(1=>1),Dict(1=>md.nest_st("T",100.10,200,[],"Any")))
+bson=Mongoc.BSON(inst)
+
+inst_st=as_struct(md.std,bson)
+@test inst_st["d1"]==Dict("ff"=>"ff")
+@test inst_st["d2"][1] isa md.nest_st
+@test inst_st["d4"][1]==1
+@test inst_st["d5"][1] isa md.nest_st
+
+inst_st=as_struct(md.abs,bson)
+@test inst_st["d1"]==Dict("ff"=>"ff")
+@test inst_st["d2"][1] isa md.nest_st
+@test inst_st["d4"][1]==1
+@test inst_st["d5"][1] isa md.nest_st
 
 ## Complex, Dict with non string keys and datatypes
 mutable struct complexStruct{T}  
