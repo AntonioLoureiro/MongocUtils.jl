@@ -85,16 +85,16 @@ inst=md.std(Dict("ff"=>"ff"),Dict(1=>md.nest_st("T",100.10,200,[],"Any")),Dict("
 bson=Mongoc.BSON(inst)
 
 inst_st=as_struct(md.std,bson)
-@test inst_st["d1"]==Dict("ff"=>"ff")
-@test inst_st["d2"][1] isa md.nest_st
-@test inst_st["d4"][1]==1
-@test inst_st["d5"][1] isa md.nest_st
+@test inst_st.d1==Dict("ff"=>"ff")
+@test inst_st.d2[1] isa md.nest_st
+@test inst_st.d4[1]==1
+@test inst_st.d5[1] isa md.nest_st
 
 inst_st=as_struct(md.abs,bson)
-@test inst_st["d1"]==Dict("ff"=>"ff")
-@test inst_st["d2"][1] isa md.nest_st
-@test inst_st["d4"][1]==1
-@test inst_st["d5"][1] isa md.nest_st
+@test inst_st.d1==Dict("ff"=>"ff")
+@test inst_st.d2[1] isa md.nest_st
+@test inst_st.d4[1]==1
+@test inst_st.d5[1] isa md.nest_st
 
 ## Complex, Dict with non string keys and datatypes
 mutable struct complexStruct{T}  
