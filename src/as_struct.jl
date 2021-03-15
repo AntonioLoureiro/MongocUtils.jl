@@ -55,18 +55,18 @@ function get_concrete_types(dt::Type)
 end
 
 function str_to_type(str::AbstractString)
-    curr_model=Main
+    curr_module=Main
     ex=Meta.parse(str)
     
     if ex isa Symbol
-        return getfield(curr_model,ex)
+        return getfield(curr_module,ex)
     elseif ex isa Expr
         if ex.head==:.
             namespace_arr=split(string(ex.args[1]),".")
             for n in namespace_arr
-                curr_model=getfield(curr_model,Symbol(n))
+                curr_module=getfield(curr_module,Symbol(n))
             end
-            return getfield(curr_model,ex.args[2].value)
+            return getfield(curr_module,ex.args[2].value)
         # Parametric
         elseif ex.head==:curly
             dt=str_to_type(string(ex.args[1]))

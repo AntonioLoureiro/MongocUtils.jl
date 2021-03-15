@@ -80,7 +80,7 @@ inst_st=as_struct(md.st,bson)
 @test inst_st.e==md.red
 
 ## Construction with Abstract Type
-@time inst_st=as_struct(md.abs,bson)
+inst_st=as_struct(md.abs,bson)
 @test inst_st.ns.s=="T"
 @test inst_st.u==123.123
 @test inst_st.v[1].s=="T"
