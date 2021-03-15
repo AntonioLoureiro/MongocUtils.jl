@@ -21,7 +21,9 @@ end
 function Base.setindex!(d::Mongoc.BSON,tv,st)
     # Important for Dicts with st String but no method already defined for tv
     if st isa AbstractString
-        d[st]=Mongoc.BSON(tv) 
+        d[st]=Mongoc.BSON(tv)
+    elseif tv isa Vector
+        d[string(hash(st),base = 62)]=Dict("_k"=>Mongoc.BSON(st),"_v"=>map(x->x isa BSON_VALUE_PRIMITIVE ? x : Mongoc.BSON(x),tv))
     else
         d[string(hash(st),base = 62)]=Dict("_k"=>Mongoc.BSON(st),"_v"=>Mongoc.BSON(tv))
     end

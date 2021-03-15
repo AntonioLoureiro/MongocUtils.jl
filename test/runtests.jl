@@ -149,3 +149,22 @@ d=as_struct(Dict,bson)
 @test d[4][1] isa Main.md.nest_st
 @test d[:a]==1
 @test d[5]==:b
+
+## deep dict
+bson=Mongoc.BSON(Dict(1=>Tvalue("T"),"a"=>1,2=>Dict(1=>1),:a=>"11",:b=>Dict(:b=>Dict(1=>Tvalue("T"))),Tvalue("T")=>"a",6=>[Dict(1=>1),12,"a",Tvalue("T")],
+        "6"=>[Dict(1=>1),12,"a",Tvalue("T")]))
+d=as_struct(Dict,bson)
+@test d[1].id=="T"
+@test d["a"]==1
+@test d[2][1]==1
+@test d[:a]=="11"
+@test d[:b][:b][1]==Tvalue("T")
+@test d[Tvalue("T")]=="a"
+@test d[6][1][1]==1
+@test d[6][2]==12
+@test d[6][3]=="a"
+@test d[6][4]==Tvalue("T")
+@test d["6"][1][1]==1
+@test d["6"][2]==12
+@test d["6"][3]=="a"
+@test d["6"][4]==Tvalue("T")
