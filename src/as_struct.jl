@@ -1,70 +1,37 @@
-const BSON_VALUE_PRIMITIVE=Union{Mongoc.BSONObjectId,Number,AbstractString,DateTime,Mongoc.BSONCode,Date,Vector{UInt8},Nothing}
 
-as_struct(dt::Type, x)=x
-as_struct(dt::Type, x::Dict)=as_struct(dt, Mongoc.BSON(x))
-function as_struct(dt::Type, x::Mongoc.BSON)
-    
-    if isconcretetype(dt)
-       return dt([convert_bson_value(fieldtype(dt,k),x[string(k)]) for k in fieldnames(dt)]...)
-    else
-         _type=nothing
-        haskey(x,"_type") ? _type=x["_type"] : nothing
-        if _type==nothing
-            types_arr=get_concrete_types(dt)
-            try 
-               for t in types_arr
-                  return  as_struct(t,x)
-               end
-            catch;
-               return x
+as_struct(dt::Type{T} where T,x::BSON_VALUE_PRIMITIVE)=x
+as_struct(dt::Type{T} where T<:Enum,x::BSON_VALUE_PRIMITIVE)=dt(x)
+
+as_struct(dt::Type{Array{T,1} where T}, arr::Array)=map(x->as_struct(eltype(dt),x),arr)
+
+function as_struct(dt::Type{T} where T<:AbstractDict,x)
+    _type=haskey(x,"_type") ? str_to_type(x["_type"]) : Dict{Any,Any}
+    ret=_type()
+    for (k,v) in x
+        k=="_type" ? continue : nothing
+        if v isa AbstractDict && haskey(v,"_k") && haskey(v,"_v")
+            if v["_k"] isa AbstractDict && haskey(v["_k"],"_type")
+               kc=as_struct(str_to_type(v["_k"]["_type"]),v["_k"])
+            else
+               kc=v["_k"]
             end
+
+            if v["_v"] isa AbstractDict && haskey(v["_v"],"_type")
+               vc=as_struct(str_to_type(v["_v"]["_type"]),v["_v"])
+            else
+                vc=v["_v"]
+            end
+            ret[kc]=vc
+        elseif v isa AbstractDict && haskey(v,"_type")
+            ret[k]=as_struct(str_to_type(v["_type"]),v)
         else
-            stored_type=str_to_type(_type)
-            @assert stored_type<:dt "Stored $(string(stored_type)) is not a subtype of abstract type $(string(dt))"
-            return as_struct(stored_type,x)
+            ret[k]=v
         end
+
     end
-end
 
-convert_bson_value(dt::DataType,x::BSON_VALUE_PRIMITIVE)=x
-convert_bson_value(dt::Union,x::BSON_VALUE_PRIMITIVE)=x
-convert_bson_value(dt::UnionAll,x::BSON_VALUE_PRIMITIVE)=x
-convert_bson_value(dt::Type{T} where T<:Enum,x::BSON_VALUE_PRIMITIVE)=dt(x)
+    return ret
 
-convert_bson_value(dt::Type{Array{T,1} where T}, arr::Array)=map(x->convert_bson_value(eltype(dt),x),arr)
-
-function convert_bson_value(dt::Type{T} where T<:AbstractDict,x)
-       
-    _type=get(x,"_type",nothing)
-    _value=get(x,"_value",nothing)
-
-    if _type==nothing
-       ret=Dict{String,Any}()
-        for (k,v) in x
-           ret[k]=convert_bson_value(Any,v) 
-        end
-       return ret
-    else
-        ret=str_to_type(_type)()
-        for r in _value
-            k=r["_k"]
-            v=r["_v"]
-            if k isa AbstractDict && haskey(k,"_type")
-               kc=convert_bson_value(str_to_type(k["_type"]),k)
-            else
-                kc=k
-            end
-            
-            if v isa AbstractDict && haskey(v,"_type")
-               vc=convert_bson_value(str_to_type(v["_type"]),v)
-            else
-                vc=v
-            end
-            ret[kc]=vc            
-        end
-        
-        return ret
-    end
 end
 
 function iter_data_types!(ret::Vector{DataType},arr::Vector)
@@ -113,23 +80,23 @@ function str_to_type(str::AbstractString)
     end
 end
 
-function convert_bson_value(dt::Type,x)
+function as_struct(dt::Type,x)
     
     if dt<:Type
         return str_to_type(get(x,"_value",nothing))
     elseif dt<:AbstractDict
-        return convert_bson_value(dt,x)
+        return as_struct(dt,x)
     elseif dt<:MongocUtils.BSON_PRIMITIVE
         return x 
     elseif isconcretetype(dt)
-        return as_struct(dt,x)
+        return dt([as_struct(fieldtype(dt,k),x[string(k)]) for k in fieldnames(dt)]...)
     elseif dt==Any
         _type=nothing
         haskey(x,"_type") ? _type=x["_type"] : nothing
         if _type==nothing
             return x
         else
-            return convert_bson_value(str_to_type(_type),x)
+            return as_struct(str_to_type(_type),x)
         end
     else
         _type=nothing
@@ -146,7 +113,9 @@ function convert_bson_value(dt::Type,x)
         elseif _type=="Type"
             return str_to_type(get(x,"_value",nothing))
         else
-            return convert_bson_value(str_to_type(_type),x)
+            stored_type=str_to_type(_type)
+            @assert stored_type<:dt "Stored $(string(stored_type)) is not a subtype of abstract type $(string(dt))"
+            return as_struct(stored_type,x)
         end
     end
 end    
