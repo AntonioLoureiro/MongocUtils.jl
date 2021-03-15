@@ -12,15 +12,19 @@ Base.setindex!(d::Mongoc.BSON,tv::Enum,st::String)=d[st]=Int(tv)
 Mongoc.BSON(s::BSON_VALUE_PRIMITIVE)=s
 
 Mongoc.BSON(s::Enum)=Int(s)
+Mongoc.BSON(s::Symbol)=Dict("_type"=>"Symbol","_value"=>string(s))
 
 function Base.setindex!(d::Mongoc.BSON,tv::BSON_VALUE_PRIMITIVE,st)
-    haskey(d,"_type") ? nothing : d["_type"]="Dict{Any,Any}"
     d[string(hash(st),base = 62)]=Dict("_k"=>Mongoc.BSON(st),"_v"=>tv)
 end
 
 function Base.setindex!(d::Mongoc.BSON,tv,st)
-    haskey(d,"_type") ? nothing : d["_type"]="Dict{Any,Any}"
-    d[string(hash(st),base = 62)]=Dict("_k"=>Mongoc.BSON(st),"_v"=>Mongoc.BSON(tv))
+    # Important for Dicts with st String but no method already defined for tv
+    if st isa AbstractString
+        d[st]=Mongoc.BSON(tv) 
+    else
+        d[string(hash(st),base = 62)]=Dict("_k"=>Mongoc.BSON(st),"_v"=>Mongoc.BSON(tv))
+    end
 end
 
 macro BSON(datatype,arr_f)
@@ -55,6 +59,8 @@ end
 function naiveBSON(s)
     document=Mongoc.BSON()
     ts=typeof(s)
+    ## _type
+    document["_type"]=string(ts)
     fs=fieldnames(ts)
     for f in fs
         v=getfield(s,f)
@@ -65,9 +71,7 @@ function naiveBSON(s)
         else
             document[string(f)]=naiveBSON(v)
         end
-    end
-    ## _type
-    document["_type"]=string(ts)
+    end  
     
     return document
 end

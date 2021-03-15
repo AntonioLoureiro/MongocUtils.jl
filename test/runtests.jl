@@ -75,12 +75,20 @@ inst_st=as_struct(md.st,bson)
 @test inst_st.v[1].s=="T"
 @test inst_st.v[2]==Dict("a"=>100,"b"=>"test")
 @test inst_st.ns.s=="T"
+@test inst_st.ns.v==[23,"aa"]
 @test inst_st.z==Dict("a"=>100)
 @test inst_st.e==md.red
 
 ## Construction with Abstract Type
 @time inst_st=as_struct(md.abs,bson)
 @test inst_st.ns.s=="T"
+@test inst_st.u==123.123
+@test inst_st.v[1].s=="T"
+@test inst_st.v[2]==Dict("a"=>100,"b"=>"test")
+@test inst_st.ns.s=="T"
+@test inst_st.ns.v==[23,"aa"]
+@test inst_st.z==Dict("a"=>100)
+@test inst_st.e==md.red
 
 ## Dicts
 inst=md.std(Dict("ff"=>"ff"),Dict(1=>md.nest_st("T",100.10,200,[],"Any")),Dict("a"=>1),Dict(1=>1),Dict(1=>md.nest_st("T",100.10,200,[],"Any")),dict_complex)
@@ -89,6 +97,7 @@ bson=Mongoc.BSON(inst)
 inst_st=as_struct(md.std,bson)
 @test inst_st.d1==Dict("ff"=>"ff")
 @test inst_st.d2[1] isa md.nest_st
+@test inst_st.d3["a"]==1
 @test inst_st.d4[1]==1
 @test inst_st.d5[1] isa md.nest_st
 @test inst_st.d6[1]==1
@@ -97,6 +106,7 @@ inst_st=as_struct(md.std,bson)
 inst_st=as_struct(md.abs,bson)
 @test inst_st.d1==Dict("ff"=>"ff")
 @test inst_st.d2[1] isa md.nest_st
+@test inst_st.d3["a"]==1
 @test inst_st.d4[1]==1
 @test inst_st.d5[1] isa md.nest_st
 @test inst_st.d6[1]==1
@@ -118,18 +128,24 @@ bs=Mongoc.BSON(p1)
 inst_st=as_struct(complexStruct{Int64},bs)
 @test inst_st.t==Float64
 @test inst_st.d["1"] isa md.nest_st
-
+@test inst_st.v==[1,2,3]
+@test inst_st.ta==Number
 
 p1=complexStruct{Int64}(1,"t",Dict(1=>md.nest_st("T",100.10,200,[],"Any")),[1,2,3],md.st,md.st)
 bs=Mongoc.BSON(p1)
 inst_st=as_struct(complexStruct{Int64},bs)
 @test inst_st.t==md.st
+@test inst_st.v==[1,2,3]
 @test inst_st.d[1] isa md.nest_st
+@test inst_st.ta==md.st
 
 ## Dict
-bson=Mongoc.BSON(Dict("a"=>md.nest_st("T",100.10,200,[],"Any"),"b"=>100,1=>1,2=>md.nest_st("T",100.10,200,[],"Any"),3=>Dict(2=>1)))
+bson=Mongoc.BSON(Dict("a"=>md.nest_st("T",100.10,200,[],"Any"),"b"=>100,1=>1,2=>md.nest_st("T",100.10,200,[],"Any"),3=>Dict(2=>1),4=>Dict(1=>md.nest_st("T",100.10,200,[],"Any")),:a=>1,5=>:b))
 d=as_struct(Dict,bson)
 @test d[2] isa Main.md.nest_st
 @test d["a"] isa Main.md.nest_st
 @test d[3][2]==1
 @test d[1]==1
+@test d[4][1] isa Main.md.nest_st
+@test d[:a]==1
+@test d[5]==:b

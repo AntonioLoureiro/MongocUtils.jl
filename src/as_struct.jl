@@ -1,8 +1,9 @@
 
 as_struct(dt::Type{T} where T,x::BSON_VALUE_PRIMITIVE)=x
 as_struct(dt::Type{T} where T<:Enum,x::BSON_VALUE_PRIMITIVE)=dt(x)
+as_struct(dt::Type{T} where T<:Symbol,x::BSON_VALUE_PRIMITIVE)=dt(x)
 
-as_struct(dt::Type{Array{T,1} where T}, arr::Array)=map(x->as_struct(eltype(dt),x),arr)
+as_struct(dt::Type{T} where T, arr::Array)=map(x->as_struct(Any,x),arr)
 
 function as_struct(dt::Type{T} where T<:AbstractDict,x)
     _type=haskey(x,"_type") ? str_to_type(x["_type"]) : Dict{Any,Any}
@@ -13,25 +14,23 @@ function as_struct(dt::Type{T} where T<:AbstractDict,x)
             if v["_k"] isa AbstractDict && haskey(v["_k"],"_type")
                kc=as_struct(str_to_type(v["_k"]["_type"]),v["_k"])
             else
-               kc=v["_k"]
+               kc=as_struct(Any,v["_k"])
             end
 
             if v["_v"] isa AbstractDict && haskey(v["_v"],"_type")
                vc=as_struct(str_to_type(v["_v"]["_type"]),v["_v"])
             else
-                vc=v["_v"]
+                vc=as_struct(Any,v["_v"])
             end
             ret[kc]=vc
         elseif v isa AbstractDict && haskey(v,"_type")
             ret[k]=as_struct(str_to_type(v["_type"]),v)
         else
-            ret[k]=v
+            ret[k]=as_struct(Any,v)
         end
-
     end
 
     return ret
-
 end
 
 function iter_data_types!(ret::Vector{DataType},arr::Vector)
@@ -82,25 +81,30 @@ end
 
 function as_struct(dt::Type,x)
     
+    _type=haskey(x,"_type") ? x["_type"] : nothing
+    
     if dt<:Type
         return str_to_type(get(x,"_value",nothing))
     elseif dt<:AbstractDict
         return as_struct(dt,x)
     elseif dt<:MongocUtils.BSON_PRIMITIVE
         return x 
+    elseif _type=="Symbol"
+        return Symbol(x["_value"])
     elseif isconcretetype(dt)
         return dt([as_struct(fieldtype(dt,k),x[string(k)]) for k in fieldnames(dt)]...)
-    elseif dt==Any
-        _type=nothing
-        haskey(x,"_type") ? _type=x["_type"] : nothing
+    elseif dt==Any   
         if _type==nothing
-            return x
+            if x isa AbstractDict
+                return as_struct(Dict,x)
+            else
+                return x
+            end
         else
             return as_struct(str_to_type(_type),x)
         end
+    ## dt is abstract
     else
-        _type=nothing
-        haskey(x,"_type") ? _type=x["_type"] : nothing
         if _type==nothing
             types_arr=get_concrete_types(dt)
             try 
