@@ -59,6 +59,7 @@ function str_to_type(str::AbstractString)
     ex=Meta.parse(str)
     
     if ex isa Symbol
+        curr_module = isdefined(parentmodule(@__MODULE__), ex) ? parentmodule(@__MODULE__) : Main
         return getfield(curr_module,ex)
     elseif ex isa Expr
         if ex.head==:.
