@@ -81,7 +81,7 @@ end
 Mongoc.BSON(s)=BSON_fallback(s)
 
 function BSON_fallback(s)
-    curr_mod=Main
+    curr_mod = parentmodule(@__MODULE__)
     ts=typeof(s)
     fs=fieldnames(ts)
     for f in fs
