@@ -81,9 +81,10 @@ end
 Mongoc.BSON(s)=BSON_fallback(s)
 
 function BSON_fallback(s)
-    curr_mod = parentmodule(@__MODULE__)
-    ts=typeof(s)
+    ts = typeof(s)
+    curr_mod = isdefined(parentmodule(ts), :BSON) ? parentmodule(ts) : Main
     fs=fieldnames(ts)
+           
     for f in fs
         tnf=typeof(getfield(s,f))
         fnf=fieldnames(tnf)
