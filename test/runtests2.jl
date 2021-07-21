@@ -1,3 +1,5 @@
+using Test
+
 module X
     using MongocUtils, Mongoc
 
