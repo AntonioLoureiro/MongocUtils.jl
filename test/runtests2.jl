@@ -21,9 +21,9 @@ module X
 end
 
 n = X.E.a()
-n_st = as_struct(X.E.N, n)
+n_st = X.E.as_struct(X.E.N, n)
 @test n_st.x == 1
 
 n = X.b()
-n_st = as_struct(X.E.N, n)
+n_st = X.as_struct(X.E.N, n)
 @test n_st.x == 2
