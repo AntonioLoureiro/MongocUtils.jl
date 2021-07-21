@@ -29,3 +29,4 @@ n_st = X.E.as_struct(X.E.N, n)
 n = X.b()
 n_st = X.as_struct(X.E.N, n)
 @test n_st.x == 2
+##
