@@ -80,7 +80,7 @@ function str_to_type(str::AbstractString)
     end
 end
 
-function as_struct(dt::Type,x)
+function as_struct(dt::Type{T} where T,x)
     
     _type=haskey(x,"_type") ? x["_type"] : nothing
     
