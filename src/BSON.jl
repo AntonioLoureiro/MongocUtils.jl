@@ -57,6 +57,9 @@ macro BSON_setindex(datatype)
     end 
 end
 
+naiveBSON(s::BSON_PRIMITIVE)=s
+naiveBSON(s::Vector)=naiveBSON.(s)
+naiveBSON(s::Symbol)=Mongoc.BSON("_type"=>"Symbol","_value"=>string(s))
 
 function naiveBSON(s)
     document=Mongoc.BSON()
@@ -66,13 +69,7 @@ function naiveBSON(s)
     fs=fieldnames(ts)
     for f in fs
         v=getfield(s,f)
-        if v isa BSON_PRIMITIVE
-            document[string(f)]=v
-        elseif v isa Vector
-            document[string(f)]=[r isa BSON_PRIMITIVE ? r : naiveBSON(r) for r in v]
-        else
-            document[string(f)]=naiveBSON(v)
-        end
+        document[string(f)]=naiveBSON(v)
     end  
     
     return document
