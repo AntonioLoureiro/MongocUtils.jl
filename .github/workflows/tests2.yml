@@ -15,6 +15,4 @@ jobs:
       - name: Install dependencies
         run:  julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
       - name: Run Tests
-        run: julia -e 'push!(LOAD_PATH,"/home/runner/work/MongocUtils.jl/MongocUtils.jl"); include("/home/runner/work/MongocUtils.jl/MongocUtils.jl/test/runtests.jl")'
-        
-    
+        run: julia -e 'push!(LOAD_PATH,"/home/runner/work/MongocUtils.jl/MongocUtils.jl"); include("/home/runner/work/MongocUtils.jl/MongocUtils.jl/test/runtests2.jl");'

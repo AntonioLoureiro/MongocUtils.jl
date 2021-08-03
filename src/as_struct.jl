@@ -55,7 +55,6 @@ function get_concrete_types(dt::Type)
 end
 
 function str_to_type(str::AbstractString)
-    curr_module=Main
     ex=Meta.parse(str)
     
     if ex isa Symbol
@@ -64,6 +63,7 @@ function str_to_type(str::AbstractString)
     elseif ex isa Expr
         if ex.head==:.
             namespace_arr=split(string(ex.args[1]),".")
+            curr_module = isdefined(parentmodule(@__MODULE__), Symbol(first(namespace_arr))) ? parentmodule(@__MODULE__) : Main
             for n in namespace_arr
                 curr_module=getfield(curr_module,Symbol(n))
             end
