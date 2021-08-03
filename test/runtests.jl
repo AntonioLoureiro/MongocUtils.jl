@@ -168,3 +168,19 @@ d=as_struct(Dict,bson)
 @test d["6"][2]==12
 @test d["6"][3]=="a"
 @test d["6"][4]==Tvalue("T")
+
+## Symbols and nested arrays
+struct TestS
+    a::Vector{Vector{Any}}
+    s::Symbol
+end
+
+t1=TestS([[1,2,3.4,"aaa",:s]],:A)
+bson=Mongoc.BSON(t1)
+d=as_struct(TestS,bson)
+
+@test d.a[1][1]==1
+@test d.a[1][3]==3.4
+@test d.a[1][4]=="aaa"
+@test d.a[1][5]==:s
+@test d.s==:A
