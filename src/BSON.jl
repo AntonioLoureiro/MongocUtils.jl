@@ -29,32 +29,21 @@ function Base.setindex!(d::Mongoc.BSON,tv,st)
     end
 end
 
-macro BSON(datatype,arr_f)
-    arr_f=@eval($arr_f)
+function bson_expr(datatype::DataType)
+    arr_f=fieldnames(datatype)
     constr_ex_arr=[]
-    for f in arr_f    
-        push!(constr_ex_arr,"\""*string(f)*"\"=>getfield(s,:$f)")   
-    end
-    ## _type
-    push!(constr_ex_arr,"\"_type\"=>\"$datatype\"")
-    
-    ex=Meta.parse("try Mongoc.BSON("*join(constr_ex_arr,",")*") catch; BSON_fallback(s) end")
-
-    return quote
-        function Mongoc.BSON(s::$(esc(datatype)))    
-            return $ex
+        for f in arr_f    
+            push!(constr_ex_arr,"\""*string(f)*"\"=>getfield(s,:$f)")   
         end
-    end 
+        ## _type
+        push!(constr_ex_arr,"\"_type\"=>\""*string(datatype)*"\"")
+                
+    return Meta.parse("function Mongoc.BSON(s::$(string(datatype))) begin return try Mongoc.BSON("*join(constr_ex_arr,",")*") catch; BSON_fallback(s) end end end")
+    
 end
 
-macro BSON_setindex(datatype)
-    
-    return quote
-        function Base.setindex!(d::Mongoc.BSON,tv::$(esc(datatype)),st::AbstractString)
-            d[st]=Mongoc.BSON(tv)
-            return nothing
-        end
-    end 
+function bson_setindex_expr(datatype::DataType)
+   return Meta.parse("function Base.setindex!(d::Mongoc.BSON,tv::$(string(datatype)),st::AbstractString) begin d[st]=Mongoc.BSON(tv); return nothing end end")
 end
 
 naiveBSON(s::BSON_PRIMITIVE)=s
@@ -79,27 +68,20 @@ Mongoc.BSON(s)=BSON_fallback(s)
 
 function BSON_fallback(s)
     ts = typeof(s)
-    #curr_mod = isdefined(parentmodule(ts), :BSON) ? parentmodule(ts) : Main
-    curr_mod = nothing
-    try
-        getproperty(parentmodule(ts), Symbol("@BSON"))
-        curr_mod = parentmodule(ts)
-    catch err
-        curr_mod = Main
-    end
-       
+    call_mod = parentmodule(ts)
+    
     fs=fieldnames(ts)
            
     for f in fs
         tnf=typeof(getfield(s,f))
         fnf=fieldnames(tnf)
         if !(hasmethod(setindex!,Tuple{Mongoc.BSON,tnf,String}))
-            Core.eval(curr_mod,Meta.parse("@BSON($tnf,$fnf)"))
-            Core.eval(curr_mod,Meta.parse("@BSON_setindex($tnf)"))
+            Core.eval(call_mod,bson_expr(tnf))
+            Core.eval(call_mod,bson_setindex_expr(tnf))
         end
     end
-    
-    Core.eval(curr_mod,Meta.parse("@BSON($ts,$fs)"))
-    Core.eval(curr_mod,Meta.parse("@BSON_setindex($ts)"))
+
+    Core.eval(call_mod,bson_expr(ts))
+    Core.eval(call_mod,bson_setindex_expr(ts))
     return naiveBSON(s)
 end
