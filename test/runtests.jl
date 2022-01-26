@@ -33,7 +33,6 @@ bt=Mongoc.BSON(t1)
 @test bt["t"]["id"]=="tt"
 
 module md
-using Mongoc,MongocUtils
 
 abstract type abs end
 @enum Color red blue green
