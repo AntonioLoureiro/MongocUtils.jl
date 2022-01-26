@@ -29,6 +29,8 @@ function Base.setindex!(d::Mongoc.BSON,tv,st)
     end
 end
 
+data_type_fullname(dt::DataType)=join(fullname(parentmodule(dt)),".")*"."*string(nameof(dt))
+            
 function bson_expr(datatype::DataType)
     arr_f=fieldnames(datatype)
     constr_ex_arr=[]
@@ -38,12 +40,12 @@ function bson_expr(datatype::DataType)
         ## _type
         push!(constr_ex_arr,"\"_type\"=>\""*string(datatype)*"\"")
                 
-    return Meta.parse("function Mongoc.BSON(s::$(string(datatype))) begin return try Mongoc.BSON("*join(constr_ex_arr,",")*") catch; BSON_fallback(s) end end end")
+    return Meta.parse("function Mongoc.BSON(s::$(data_type_fullname(datatype))) begin return try Mongoc.BSON("*join(constr_ex_arr,",")*") catch; BSON_fallback(s) end end end")
     
 end
 
 function bson_setindex_expr(datatype::DataType)
-   return Meta.parse("function Base.setindex!(d::Mongoc.BSON,tv::$(string(datatype)),st::AbstractString) begin d[st]=Mongoc.BSON(tv); return nothing end end")
+   return Meta.parse("function Base.setindex!(d::Mongoc.BSON,tv::$(data_type_fullname(datatype)),st::AbstractString) begin d[st]=Mongoc.BSON(tv); return nothing end end")
 end
 
 naiveBSON(s::BSON_PRIMITIVE)=s
@@ -66,9 +68,28 @@ end
 
 Mongoc.BSON(s)=BSON_fallback(s)
 
+function whereis(mod::Symbol,parent::Module)
+   arr=names(parent)
+   if isdefined(parent, mod)
+        return parent
+   else
+       for r in arr
+          r in [nameof(parent),:Base,:Core] ? continue : nothing
+          sub=getproperty(parent,r)
+          sub isa Module ? nothing : continue
+          found=whereis(mod,sub)
+          if found!=nothing
+              return found
+          end
+       end
+   end
+    return nothing
+end
+
 function BSON_fallback(s)
     ts = typeof(s)
-    call_mod = parentmodule(ts)
+    mongo_mod = whereis(:Mongoc,Main)
+    mongo_mod == nothing ? mongo_mod=parentmodule(ts) : nothing
     
     fs=fieldnames(ts)
            
@@ -76,12 +97,12 @@ function BSON_fallback(s)
         tnf=typeof(getfield(s,f))
         fnf=fieldnames(tnf)
         if !(hasmethod(setindex!,Tuple{Mongoc.BSON,tnf,String}))
-            Core.eval(call_mod,bson_expr(tnf))
-            Core.eval(call_mod,bson_setindex_expr(tnf))
+            Core.eval(mongo_mod,bson_expr(tnf))
+            Core.eval(mongo_mod,bson_setindex_expr(tnf))
         end
     end
 
-    Core.eval(call_mod,bson_expr(ts))
-    Core.eval(call_mod,bson_setindex_expr(ts))
+    Core.eval(mongo_mod,bson_expr(ts))
+    Core.eval(mongo_mod,bson_setindex_expr(ts))
     return naiveBSON(s)
 end
