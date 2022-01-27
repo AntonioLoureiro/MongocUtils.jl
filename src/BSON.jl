@@ -30,15 +30,18 @@ function Base.setindex!(d::Mongoc.BSON,tv,st)
 end
 
 data_type_fullname(dt::DataType)=join(fullname(parentmodule(dt)),".")*"."*string(nameof(dt))
-            
+
+str_datatype(datatype::DataType)=parentmodule(datatype) == Main ? string(nameof(datatype)) : string(nameof(parentmodule(datatype)))*"."*string(nameof(datatype))
+                        
 function bson_expr(datatype::DataType)
     arr_f=fieldnames(datatype)
+    str_type=str_datatype(datatype)
     constr_ex_arr=[]
         for f in arr_f    
             push!(constr_ex_arr,"\""*string(f)*"\"=>getfield(s,:$f)")   
         end
         ## _type
-        push!(constr_ex_arr,"\"_type\"=>\""*string(datatype)*"\"")
+        push!(constr_ex_arr,"\"_type\"=>\""*str_type*"\"")
                 
     return Meta.parse("function Mongoc.BSON(s::$(data_type_fullname(datatype))) begin return try Mongoc.BSON("*join(constr_ex_arr,",")*") catch; BSON_fallback(s) end end end")
     
@@ -56,7 +59,8 @@ function naiveBSON(s)
     document=Mongoc.BSON()
     ts=typeof(s)
     ## _type
-    document["_type"]=string(ts)
+    str_type=str_datatype(ts)
+    document["_type"]=str_type
     fs=fieldnames(ts)
     for f in fs
         v=getfield(s,f)
