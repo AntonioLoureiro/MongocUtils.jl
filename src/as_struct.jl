@@ -56,18 +56,17 @@ end
 
 function str_to_type(str::AbstractString)
     ex=Meta.parse(str)
-    
+
     if ex isa Symbol
-        curr_module = isdefined(parentmodule(@__MODULE__), ex) ? parentmodule(@__MODULE__) : Main
-        return getfield(curr_module,ex)
+        return getfield(Main,ex)
     elseif ex isa Expr
         if ex.head==:.
             namespace_arr=split(string(ex.args[1]),".")
-            curr_module = isdefined(parentmodule(@__MODULE__), Symbol(first(namespace_arr))) ? parentmodule(@__MODULE__) : Main
+            parent=whereis(Symbol(namespace_arr[1]),Main)
             for n in namespace_arr
-                curr_module=getfield(curr_module,Symbol(n))
+                parent=getfield(parent,Symbol(n))
             end
-            return getfield(curr_module,ex.args[2].value)
+            return getfield(parent,ex.args[2].value)
         # Parametric
         elseif ex.head==:curly
             dt=str_to_type(string(ex.args[1]))
@@ -77,7 +76,7 @@ function str_to_type(str::AbstractString)
             end
             return dt{parameters...}
         end
-    end
+   end
 end
 
 function as_struct(dt::Type{T} where T,x)
