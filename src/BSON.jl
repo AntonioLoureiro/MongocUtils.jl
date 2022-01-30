@@ -1,7 +1,7 @@
 
 ## Type
 function Base.setindex!(d::Mongoc.BSON,tv::Type,st::AbstractString)
-    d[st]=Dict("_type"=>"Type","_value"=>string(tv))
+    d[st]=Dict("_type"=>"Type","_value"=>string(nameof(tv)))
 end
 
 ## Date
@@ -31,7 +31,7 @@ end
 
 data_type_fullname(dt::DataType)=join(fullname(parentmodule(dt)),".")*"."*string(nameof(dt))
 
-str_datatype(datatype::DataType)=parentmodule(datatype) == Main ? string(nameof(datatype)) : string(nameof(parentmodule(datatype)))*"."*string(nameof(datatype))
+str_datatype(datatype::DataType)=string(nameof(datatype))
                         
 function bson_expr(datatype::DataType)
     arr_f=fieldnames(datatype)
