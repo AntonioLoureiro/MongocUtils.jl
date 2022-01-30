@@ -6,25 +6,25 @@ as_struct(dt::Type{T} where T<:Symbol,x::BSON_VALUE_PRIMITIVE)=dt(x)
 as_struct(dt::Type{T} where T, arr::Array)=map(x->as_struct(Any,x),arr)
 
 function as_struct(dt::Type{T} where T<:AbstractDict,x)
-    _type=haskey(x,"_type") ? str_to_type(x["_type"]) : Dict{Any,Any}
+    _type=haskey(x,"_type") ? str_to_type(x["_type"],dt) : Dict{Any,Any}
     ret=_type()
     for (k,v) in x
         k=="_type" ? continue : nothing
         if v isa AbstractDict && haskey(v,"_k") && haskey(v,"_v")
             if v["_k"] isa AbstractDict && haskey(v["_k"],"_type")
-               kc=as_struct(str_to_type(v["_k"]["_type"]),v["_k"])
+               kc=as_struct(str_to_type(v["_k"]["_type"],dt),v["_k"])
             else
                kc=as_struct(Any,v["_k"])
             end
 
             if v["_v"] isa AbstractDict && haskey(v["_v"],"_type")
-               vc=as_struct(str_to_type(v["_v"]["_type"]),v["_v"])
+               vc=as_struct(str_to_type(v["_v"]["_type"],dt),v["_v"])
             else
                 vc=as_struct(Any,v["_v"])
             end
             ret[kc]=vc
         elseif v isa AbstractDict && haskey(v,"_type")
-            ret[k]=as_struct(str_to_type(v["_type"]),v)
+            ret[k]=as_struct(str_to_type(v["_type"],dt),v)
         else
             ret[k]=as_struct(Any,v)
         end
@@ -54,28 +54,20 @@ function get_concrete_types(dt::Type)
     return ret
 end
 
-function str_to_type(str::AbstractString)
+function str_to_type(str::AbstractString,dt::Type{T} where T)
     ex=Meta.parse(str)
-
+    parent_mod=parentmodule(dt)
     if ex isa Symbol
-        return getfield(Main,ex)
+        return try getfield(parent_mod,ex) catch; getfield(whereis(ex,Main),ex) end
     elseif ex isa Expr
-        if ex.head==:.
-            namespace_arr=split(string(ex.args[1]),".")
-            parent=whereis(Symbol(namespace_arr[1]),Main)
-            for n in namespace_arr
-                parent=getfield(parent,Symbol(n))
-            end
-            return getfield(parent,ex.args[2].value)
         # Parametric
-        elseif ex.head==:curly
-            dt=str_to_type(string(ex.args[1]))
-            parameters=Vector{Type}()
-            for e in ex.args[2:end]
-               push!(parameters,str_to_type(string(e)))
-            end
-            return dt{parameters...}
+        @assert ex.head==:curly "Stored _type is not a Symbol or Parametric type"
+        dt=str_to_type(string(ex.args[1]),dt)
+        parameters=Vector{Type}()
+        for e in ex.args[2:end]
+           push!(parameters,str_to_type(string(e),dt))
         end
+        return dt{parameters...}
    end
 end
 
@@ -85,7 +77,7 @@ function as_struct(dt::Type{T} where T,x)
     
     try
         if dt<:Type
-            return str_to_type(get(x,"_value",nothing))
+            return str_to_type(get(x,"_value",nothing),dt)
         elseif dt<:AbstractDict
             return as_struct(dt,x)
         elseif dt<:MongocUtils.BSON_PRIMITIVE
@@ -102,7 +94,7 @@ function as_struct(dt::Type{T} where T,x)
                     return x
                 end
             else
-                return as_struct(str_to_type(_type),x)
+                return as_struct(str_to_type(_type,dt),x)
             end
         ## dt is abstract
         else
@@ -116,9 +108,9 @@ function as_struct(dt::Type{T} where T,x)
                    return x
                 end
             elseif _type=="Type"
-                return str_to_type(get(x,"_value",nothing))
+                return str_to_type(get(x,"_value",nothing),dt)
             else
-                stored_type=str_to_type(_type)
+                stored_type=str_to_type(_type,dt)
                 @assert stored_type<:dt "Stored $(string(stored_type)) is not a subtype of abstract type $(string(dt))"
                 return as_struct(stored_type,x)
             end
@@ -132,4 +124,4 @@ function as_struct(dt::Type{T} where T,x)
         end
     end
         
-end    
+end 
