@@ -3,7 +3,7 @@ as_struct(dt::Type{T} where T,x::BSON_VALUE_PRIMITIVE)=x
 as_struct(dt::Type{T} where T<:Enum,x::BSON_VALUE_PRIMITIVE)=dt(x)
 as_struct(dt::Type{T} where T<:Symbol,x::BSON_VALUE_PRIMITIVE)=dt(x)
 
-as_struct(dt::Type{T} where T, arr::Array)=map(x->as_struct(Any,x),arr)
+as_struct(dt::Type{T} where T, arr::Array)=map(x->as_struct(eltype(dt),x),arr)
 
 function as_struct(dt::Type{T} where T<:AbstractDict,x)
     _type=haskey(x,"_type") ? str_to_type(x["_type"],dt) : Dict{Any,Any}
@@ -12,19 +12,22 @@ function as_struct(dt::Type{T} where T<:AbstractDict,x)
         k=="_type" ? continue : nothing
         if v isa AbstractDict && haskey(v,"_k") && haskey(v,"_v")
             if v["_k"] isa AbstractDict && haskey(v["_k"],"_type")
-               kc=as_struct(str_to_type(v["_k"]["_type"],dt),v["_k"])
+               isconcretetype(dt) ?  kt=keytype(dt) : kt=Any
+               isconcretetype(kt) ? kc=as_struct(kt,v["_k"]) : kc=as_struct(str_to_type(v["_k"]["_type"],kt),v["_k"])
             else
                kc=as_struct(Any,v["_k"])
             end
 
             if v["_v"] isa AbstractDict && haskey(v["_v"],"_type")
-               vc=as_struct(str_to_type(v["_v"]["_type"],dt),v["_v"])
+               isconcretetype(dt) ? vt=valtype(dt) : vt=Any
+               isconcretetype(Main) ? vc=as_struct(vt,v["_v"]) : vc=as_struct(str_to_type(v["_v"]["_type"],vt),v["_v"])
             else
                 vc=as_struct(Any,v["_v"])
             end
             ret[kc]=vc
         elseif v isa AbstractDict && haskey(v,"_type")
-            ret[k]=as_struct(str_to_type(v["_type"],dt),v)
+             isconcretetype(dt) ? vt=valtype(dt) : vt=Any
+            isconcretetype(vt) ? ret[k]=as_struct(vt,v) : ret[k]=as_struct(str_to_type(v["_type"],vt),v)
         else
             ret[k]=as_struct(Any,v)
         end
@@ -58,7 +61,7 @@ function str_to_type(str::AbstractString,dt::Type{T} where T)
     ex=Meta.parse(str)
     parent_mod=parentmodule(dt)
     if ex isa Symbol
-        return try getfield(parent_mod,ex) catch; getfield(whereis(ex,Main),ex) end
+         return isdefined(parent_mod,ex) ? getfield(parent_mod,ex) : getfield(MongocUtils.whereis(ex,Main),ex)
     elseif ex isa Expr
         # Parametric
         @assert ex.head==:curly "Stored _type is not a Symbol or Parametric type"
@@ -110,9 +113,14 @@ function as_struct(dt::Type{T} where T,x)
             elseif _type=="Type"
                 return str_to_type(get(x,"_value",nothing),dt)
             else
-                stored_type=str_to_type(_type,dt)
-                @assert stored_type<:dt "Stored $(string(stored_type)) is not a subtype of abstract type $(string(dt))"
-                return as_struct(stored_type,x)
+                types_arr=MongocUtils.get_concrete_types(dt)
+                types_arr_str=string.(nameof.(types_arr))
+                found=findfirst(x->x==_type,types_arr_str)
+                if found==nothing
+                   error("Stored $(_type) is not a subtype of abstract type $(string(dt))")
+                else
+                    return as_struct(types_arr[found],x)
+                end
             end
         end
         
