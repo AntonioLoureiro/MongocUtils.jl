@@ -20,7 +20,7 @@ function as_struct(dt::Type{T} where T<:AbstractDict,x)
 
             if v["_v"] isa AbstractDict && haskey(v["_v"],"_type")
                isconcretetype(dt) ? vt=valtype(dt) : vt=Any
-               isconcretetype(Main) ? vc=as_struct(vt,v["_v"]) : vc=as_struct(str_to_type(v["_v"]["_type"],vt),v["_v"])
+               isconcretetype(vt) ? vc=as_struct(vt,v["_v"]) : vc=as_struct(str_to_type(v["_v"]["_type"],vt),v["_v"])
             else
                 vc=as_struct(Any,v["_v"])
             end
