@@ -73,7 +73,7 @@ end
 Mongoc.BSON(s)=BSON_fallback(s)
 
 function whereis(mod::Symbol,parent::Module)
-   arr=names(parent)
+   arr=names(parent,all=true)
    if isdefined(parent, mod)
         return parent
    else
@@ -87,26 +87,34 @@ function whereis(mod::Symbol,parent::Module)
           end
        end
    end
-    return nothing
+    return Main
 end
 
+MONGOC_NS=Main
 function BSON_fallback(s)
     ts = typeof(s)
-    mongo_mod = whereis(:Mongoc,Main)
-    mongo_mod == nothing ? mongo_mod=parentmodule(ts) : nothing
-    
-    fs=fieldnames(ts)
-           
-    for f in fs
-        tnf=typeof(getfield(s,f))
-        fnf=fieldnames(tnf)
-        if !(hasmethod(setindex!,Tuple{Mongoc.BSON,tnf,String}))
-            Core.eval(mongo_mod,bson_expr(tnf))
-            Core.eval(mongo_mod,bson_setindex_expr(tnf))
-        end
+    if isdefined(MONGOC_NS,:Mongoc)
+        mongo_mod=MONGOC_NS
+    else
+        mongo_mod = whereis(:Mongoc,Main)
+        global MONGOC_NS=mongo_mod
     end
+    
+    if isdefined(MONGOC_NS,:Mongoc)
+        fs=fieldnames(ts)
+           
+        for f in fs
+            tnf=typeof(getfield(s,f))
+            fnf=fieldnames(tnf)
+            if !(hasmethod(setindex!,Tuple{Mongoc.BSON,tnf,String}))
+                Core.eval(mongo_mod,bson_expr(tnf))
+                Core.eval(mongo_mod,bson_setindex_expr(tnf))
+            end
+        end
 
-    Core.eval(mongo_mod,bson_expr(ts))
-    Core.eval(mongo_mod,bson_setindex_expr(ts))
+        Core.eval(mongo_mod,bson_expr(ts))
+        Core.eval(mongo_mod,bson_setindex_expr(ts))
+    end
+            
     return naiveBSON(s)
 end
