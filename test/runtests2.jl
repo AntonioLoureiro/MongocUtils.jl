@@ -1,8 +1,7 @@
 using Test
 
 module X
-    using MongocUtils, Mongoc
-
+   
     module E
         using MongocUtils, Mongoc
 
@@ -18,7 +17,7 @@ module X
 
     function b()
         n = E.N(2)
-        return Mongoc.BSON(n)
+        return E.Mongoc.BSON(n)
     end
 end
 
@@ -27,6 +26,6 @@ n_st = X.E.as_struct(X.E.N, n)
 @test n_st.x == 1
 
 n = X.b()
-n_st = X.as_struct(X.E.N, n)
+n_st = X.E.as_struct(X.E.N, n)
 @test n_st.x == 2
 ##
