@@ -64,7 +64,11 @@ function naiveBSON(s)
     fs=fieldnames(ts)
     for f in fs
         v=getfield(s,f)
-        document[string(f)]=naiveBSON(v)
+        if !(hasmethod(Mongoc.BSON,Tuple{typeof(v)})) || v isa MongocUtils.BSON_PRIMITIVE || v isa AbstractArray
+             document[string(f)]=MongocUtils.naiveBSON(v)
+        else
+            document[string(f)]=Mongoc.BSON(v)
+        end
     end  
     
     return document
