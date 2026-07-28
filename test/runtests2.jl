@@ -1,7 +1,7 @@
 using Test
 
 module X
-   
+
     module E
         using MongocUtils, Mongoc
 
@@ -28,4 +28,19 @@ n_st = X.E.as_struct(X.E.N, n)
 n = X.b()
 n_st = X.E.as_struct(X.E.N, n)
 @test n_st.x == 2
-##
+
+module CustomConstruction
+    using MongocUtils, Mongoc
+
+    struct ValidatedValue
+        value::Int
+        ValidatedValue(value::Int, ::Val{:validated}) = value > 0 ? new(value) : throw(ArgumentError("value must be positive"))
+    end
+
+    MongocUtils.construct(::Type{ValidatedValue}, fields::NamedTuple) =
+        ValidatedValue(fields.value, Val(:validated))
+end
+
+custom_bson = Mongoc.BSON("value" => 42, "_type" => "ValidatedValue")
+custom_value = MongocUtils.as_struct(CustomConstruction.ValidatedValue, custom_bson)
+@test custom_value.value == 42
