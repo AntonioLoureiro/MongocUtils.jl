@@ -1,31 +1,77 @@
 # MongocUtils.jl
-## Write to Mongo
+
+Utilities for converting Julia structs to `Mongoc.BSON` documents and reconstructing typed Julia values from BSON.
+
+## Installation
+
 ```julia
-using Mongoc,MongocUtils
+using Pkg
+Pkg.add("MongocUtils")
+```
+
+## Write a struct to BSON
+
+```julia
+using Mongoc
+using MongocUtils
 
 struct Tvalue
-   id::String
-end
-
-struct Test
     id::String
-    i::Int64
-    a::Array{Dict,1}
-    vt::Vector
-    t::Tvalue
 end
 
-t1=Test("aa", 1, [Dict("aa"=>1),Dict("c"=>"tt")],[Tvalue("tt")], Tvalue("tt"))
-bs=Mongoc.BSON(t1)
-Mongoc.BSON with 5 entries:
-  "id" => "aa"
-  "i"  => 1
-  "a"  => Any[Dict{Any,Any}("aa"=>1), Dict{Any,Any}("c"=>"tt")]
-  "vt" => Any[Dict{Any,Any}("id"=>"tt")]
-  "t"  => Dict{Any,Any}("id"=>"tt")
-  ```
-## Read from Mongo
+struct Example
+    id::String
+    count::Int
+    attributes::Vector{Dict}
+    values::Vector
+    nested::Tvalue
+end
+
+value = Example(
+    "aa",
+    1,
+    [Dict("aa" => 1), Dict("c" => "tt")],
+    [Tvalue("tt")],
+    Tvalue("tt"),
+)
+
+document = Mongoc.BSON(value)
+```
+
+`document` is a normal `Mongoc.BSON` value and can be inserted into MongoDB using Mongoc.jl.
+
+## Read BSON into a struct
+
 ```julia
-as_struct(Test,bs)
-Test("aa", 1, Dict[Dict("aa" => 1), Dict("c" => "tt")], Tvalue[Tvalue("tt")], Tvalue("tt"))
-  ```
+restored = as_struct(Example, document)
+```
+
+The stored `_type` metadata is used for nested concrete values, abstract fields, symbols, enums, dictionaries with non-string keys, and heterogeneous arrays.
+
+## Custom construction
+
+By default, `as_struct` calls a type's positional constructor using fields in declaration order. Types with validation, keyword-only construction, or no matching positional constructor can define a `construct` method:
+
+```julia
+struct PositiveValue
+    value::Int
+    PositiveValue(value::Int, ::Val{:validated}) =
+        value > 0 ? new(value) : throw(ArgumentError("value must be positive"))
+end
+
+MongocUtils.construct(::Type{PositiveValue}, fields::NamedTuple) =
+    PositiveValue(fields.value, Val(:validated))
+```
+
+The `NamedTuple` keys are the struct field names, so custom construction does not depend on manual dictionary lookups.
+
+## Supported values
+
+MongocUtils handles common BSON-compatible values, including numbers, strings, dates, object IDs, byte vectors, enums, symbols, nested structs, arrays, and dictionaries.
+
+## Testing
+
+```julia
+using Pkg
+Pkg.test("MongocUtils")
+```

@@ -1,135 +1,141 @@
+"""
+    construct(::Type{T}, fields::NamedTuple) -> T
 
-as_struct(dt::Type{T} where T,x::BSON_VALUE_PRIMITIVE)=x
-as_struct(dt::Type{T} where T<:Enum,x::BSON_VALUE_PRIMITIVE)=dt(x)
-as_struct(dt::Type{T} where T<:Symbol,x::BSON_VALUE_PRIMITIVE)=dt(x)
+Construct an instance of `T` from deserialized fields. The default implementation
+calls the positional constructor in declaration order. Define a more specific
+method for types that use validated, keyword-only, or otherwise custom
+constructors.
+"""
+construct(::Type{T}, fields::NamedTuple) where {T} = T(values(fields)...)
 
-as_struct(dt::Type{T} where T, arr::Array)=map(x->as_struct(eltype(dt),x),arr)
+as_struct(dt::Type{T} where T, x::BSON_VALUE_PRIMITIVE) = x
+as_struct(dt::Type{T} where T<:Enum, x::BSON_VALUE_PRIMITIVE) = dt(x)
+as_struct(dt::Type{T} where T<:Symbol, x::BSON_VALUE_PRIMITIVE) = dt(x)
 
-function as_struct(dt::Type{T} where T<:AbstractDict,x)
-    _type=haskey(x,"_type") ? str_to_type(x["_type"],dt) : Dict{Any,Any}
-    ret=_type()
-    for (k,v) in x
-        k=="_type" ? continue : nothing
-        if v isa AbstractDict && haskey(v,"_k") && haskey(v,"_v")
-            if v["_k"] isa AbstractDict && haskey(v["_k"],"_type")
-               isconcretetype(dt) ?  kt=keytype(dt) : kt=Any
-               isconcretetype(kt) ? kc=as_struct(kt,v["_k"]) : kc=as_struct(str_to_type(v["_k"]["_type"],kt),v["_k"])
+as_struct(dt::Type{T} where T, arr::Array) = map(x -> as_struct(eltype(dt), x), arr)
+
+function as_struct(dt::Type{T} where T<:AbstractDict, x)
+    _type = haskey(x, "_type") ? str_to_type(x["_type"], dt) : Dict{Any,Any}
+    ret = _type()
+    for (k, v) in x
+        k == "_type" ? continue : nothing
+        if v isa AbstractDict && haskey(v, "_k") && haskey(v, "_v")
+            if v["_k"] isa AbstractDict && haskey(v["_k"], "_type")
+                isconcretetype(dt) ? kt = keytype(dt) : kt = Any
+                isconcretetype(kt) ? kc = as_struct(kt, v["_k"]) : kc = as_struct(str_to_type(v["_k"]["_type"], kt), v["_k"])
             else
-               kc=as_struct(Any,v["_k"])
+                kc = as_struct(Any, v["_k"])
             end
 
-            if v["_v"] isa AbstractDict && haskey(v["_v"],"_type")
-               isconcretetype(dt) ? vt=valtype(dt) : vt=Any
-               isconcretetype(vt) ? vc=as_struct(vt,v["_v"]) : vc=as_struct(str_to_type(v["_v"]["_type"],vt),v["_v"])
+            if v["_v"] isa AbstractDict && haskey(v["_v"], "_type")
+                isconcretetype(dt) ? vt = valtype(dt) : vt = Any
+                isconcretetype(vt) ? vc = as_struct(vt, v["_v"]) : vc = as_struct(str_to_type(v["_v"]["_type"], vt), v["_v"])
             else
-                vc=as_struct(Any,v["_v"])
+                vc = as_struct(Any, v["_v"])
             end
-            ret[kc]=vc
-        elseif v isa AbstractDict && haskey(v,"_type")
-             isconcretetype(dt) ? vt=valtype(dt) : vt=Any
-            isconcretetype(vt) ? ret[k]=as_struct(vt,v) : ret[k]=as_struct(str_to_type(v["_type"],vt),v)
+            ret[kc] = vc
+        elseif v isa AbstractDict && haskey(v, "_type")
+            isconcretetype(dt) ? vt = valtype(dt) : vt = Any
+            isconcretetype(vt) ? ret[k] = as_struct(vt, v) : ret[k] = as_struct(str_to_type(v["_type"], vt), v)
         else
-            ret[k]=as_struct(Any,v)
+            ret[k] = as_struct(Any, v)
         end
     end
 
     return ret
 end
 
-function iter_data_types!(ret::Vector{DataType},arr::Vector)
+function iter_data_types!(ret::Vector{DataType}, arr::Vector)
     for r in arr
         if isconcretetype(r)
-           push!(ret,r) 
+            push!(ret, r)
         else
-            n_ret=get_concrete_types(r)
-            length(n_ret)==0 ? nothing : append!(ret,n_ret)
+            n_ret = get_concrete_types(r)
+            length(n_ret) == 0 ? nothing : append!(ret, n_ret)
         end
     end
 end
 
 function get_concrete_types(dt::Type)
-    ret=Vector{DataType}()
-    if typeof(dt)==Union
-         iter_data_types!(ret,Base.uniontypes(dt))
+    ret = Vector{DataType}()
+    if typeof(dt) == Union
+        iter_data_types!(ret, Base.uniontypes(dt))
     else
-        iter_data_types!(ret,InteractiveUtils.subtypes(dt))
+        iter_data_types!(ret, InteractiveUtils.subtypes(dt))
     end
     return ret
 end
 
-function str_to_type(str::AbstractString,dt::Type{T} where T)
-    ex=Meta.parse(str)
-    parent_mod=parentmodule(dt)
+function str_to_type(str::AbstractString, dt::Type{T} where T)
+    ex = Meta.parse(str)
+    parent_mod = parentmodule(dt)
     if ex isa Symbol
-         return isdefined(parent_mod,ex) ? getfield(parent_mod,ex) : getfield(MongocUtils.whereis(ex,Main),ex)
+        return isdefined(parent_mod, ex) ? getfield(parent_mod, ex) : getfield(MongocUtils.whereis(ex, Main), ex)
     elseif ex isa Expr
-        # Parametric
-        @assert ex.head==:curly "Stored _type is not a Symbol or Parametric type"
-        dt=str_to_type(string(ex.args[1]),dt)
-        parameters=Vector{Type}()
+        @assert ex.head == :curly "Stored _type is not a Symbol or Parametric type"
+        dt = str_to_type(string(ex.args[1]), dt)
+        parameters = Vector{Type}()
         for e in ex.args[2:end]
-           push!(parameters,str_to_type(string(e),dt))
+            push!(parameters, str_to_type(string(e), dt))
         end
         return dt{parameters...}
-   end
+    end
 end
 
-function as_struct(dt::Type{T} where T,x)
-    
-    _type=haskey(x,"_type") ? x["_type"] : nothing
-    
+function as_struct(dt::Type{T} where T, x)
+    _type = haskey(x, "_type") ? x["_type"] : nothing
+
     try
-        if dt<:Type
-            return str_to_type(get(x,"_value",nothing),dt)
-        elseif dt<:AbstractDict
-            return as_struct(dt,x)
-        elseif dt<:MongocUtils.BSON_PRIMITIVE
-            return x 
-        elseif _type=="Symbol"
+        if dt <: Type
+            return str_to_type(get(x, "_value", nothing), dt)
+        elseif dt <: AbstractDict
+            return as_struct(dt, x)
+        elseif dt <: MongocUtils.BSON_PRIMITIVE
+            return x
+        elseif _type == "Symbol"
             return Symbol(x["_value"])
         elseif isconcretetype(dt)
-            return dt([as_struct(fieldtype(dt,k),x[string(k)]) for k in fieldnames(dt)]...)
-        elseif dt==Any   
-            if _type==nothing
+            names = fieldnames(dt)
+            fields = NamedTuple{names}(Tuple(as_struct(fieldtype(dt, name), x[string(name)]) for name in names))
+            return construct(dt, fields)
+        elseif dt == Any
+            if _type == nothing
                 if x isa AbstractDict
-                    return as_struct(Dict,x)
+                    return as_struct(Dict, x)
                 else
                     return x
                 end
             else
-                return as_struct(str_to_type(_type,dt),x)
+                return as_struct(str_to_type(_type, dt), x)
             end
-        ## dt is abstract
         else
-            if _type==nothing
-                types_arr=get_concrete_types(dt)
-                try 
-                   for t in types_arr
-                      return  as_struct(t,x)
-                   end
-                catch;
-                   return x
+            if _type == nothing
+                types_arr = get_concrete_types(dt)
+                try
+                    for t in types_arr
+                        return as_struct(t, x)
+                    end
+                catch
+                    return x
                 end
-            elseif _type=="Type"
-                return str_to_type(get(x,"_value",nothing),dt)
+            elseif _type == "Type"
+                return str_to_type(get(x, "_value", nothing), dt)
             else
-                types_arr=MongocUtils.get_concrete_types(dt)
-                types_arr_str=string.(nameof.(types_arr))
-                found=findfirst(x->x==_type,types_arr_str)
-                if found==nothing
-                   error("Stored $(_type) is not a subtype of abstract type $(string(dt))")
+                types_arr = MongocUtils.get_concrete_types(dt)
+                types_arr_str = string.(nameof.(types_arr))
+                found = findfirst(x -> x == _type, types_arr_str)
+                if found == nothing
+                    error("Stored $(_type) is not a subtype of abstract type $(string(dt))")
                 else
-                    return as_struct(types_arr[found],x)
+                    return as_struct(types_arr[found], x)
                 end
             end
         end
-        
-    catch err;
+    catch err
         if err isa MethodError
-            return error("Probably struct with no default constructor, create a method with the following signature-> function as_struct(dt::Type{$(string(dt))},x)")
+            return error("Could not construct $(string(dt)). Define MongocUtils.construct(::Type{$(string(dt))}, fields::NamedTuple) for custom construction.")
         else
             return throw(err)
         end
     end
-        
-end 
+end
