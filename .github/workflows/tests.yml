@@ -1,20 +1,37 @@
 name: Tests
 
-on: push
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
 
 jobs:
-  publish:
+  test:
+    name: Julia ${{ matrix.julia-version }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        julia-version:
+          - "lts"
+          - "1"
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Set up Julia
-        uses: julia-actions/setup-julia@latest
+        uses: julia-actions/setup-julia@v2
         with:
-          version: 1.5        
-      - name: Install dependencies
-        run:  julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
-      - name: Run Tests
-        run: julia -e 'push!(LOAD_PATH,"/home/runner/work/MongocUtils.jl/MongocUtils.jl"); include("/home/runner/work/MongocUtils.jl/MongocUtils.jl/test/runtests.jl")'
-        
-    
+          version: ${{ matrix.julia-version }}
+
+      - name: Cache Julia artifacts
+        uses: julia-actions/cache@v2
+
+      - name: Instantiate test environment
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Run test suites
+        run: julia --project=. -e 'include("test/runtests.jl"); include("test/runtests2.jl")'
