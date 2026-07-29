@@ -1,20 +1,38 @@
 name: Tests
 
-on: push
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: tests-${{ github.ref }}-${{ matrix.julia-version }}
+  cancel-in-progress: true
 
 jobs:
-  publish:
+  test:
+    name: Julia ${{ matrix.julia-version }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        julia-version:
+          - '1.6'
+          - 'lts'
+          - '1'
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Set up Julia
-        uses: julia-actions/setup-julia@latest
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
         with:
-          version: 1.5        
-      - name: Install dependencies
-        run:  julia -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
-      - name: Run Tests
-        run: julia -e 'push!(LOAD_PATH,"/home/runner/work/MongocUtils.jl/MongocUtils.jl"); include("/home/runner/work/MongocUtils.jl/MongocUtils.jl/test/runtests.jl")'
-        
-    
+          version: ${{ matrix.julia-version }}
+      - uses: julia-actions/cache@v2
+      - name: Instantiate
+        run: julia --project -e 'using Pkg; Pkg.instantiate()'
+      - name: Run package tests
+        run: julia --project -e 'using Pkg; Pkg.test()'
+      - name: Run module-scope regression tests
+        run: julia --project test/runtests2.jl
+      - name: Run runtime-generated function tests
+        run: julia --project test/runtime_generated_functions.jl
